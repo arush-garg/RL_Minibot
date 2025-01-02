@@ -6,7 +6,7 @@
 const char* serverAddress = "http://10.0.0.163:8000/predict";
 //const char* serverAddress = "http://172.20.10.2:8000/predict";
 
-double getPrediction(StaticJsonDocument<200> doc) {
+int getPrediction(StaticJsonDocument<200> doc) {
   WiFiClient client;
   HTTPClient http;
 
@@ -22,7 +22,6 @@ double getPrediction(StaticJsonDocument<200> doc) {
   int httpResponseCode = http.POST(jsonData);
   String response = http.getString();
   StaticJsonDocument<200> docResponse;
-
   DeserializationError error = deserializeJson(docResponse, response);
 
   if (error) {
@@ -32,7 +31,7 @@ double getPrediction(StaticJsonDocument<200> doc) {
   } 
   else {
     // Extract the result from the JSON response
-    double action = docResponse["action"];
+    int action = (int)docResponse["action"];
     http.end();
     return action;
   }
