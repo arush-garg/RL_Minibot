@@ -8,6 +8,7 @@ const int ENCODER_CPR = 1024;
 */
 double readEncoder() {
   int64_t position = encoder.getCount();
-  double angle = (double)(position/ENCODER_CPR)*M_PI;
+  double angle = ((double)(position)/ENCODER_CPR)*M_PI;
+  Serial.printf("Angle: %f \n", angle);
   return angle;
 }

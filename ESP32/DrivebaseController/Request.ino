@@ -6,7 +6,7 @@
 const char* serverAddress = "http://10.0.0.163:8000/predict";
 //const char* serverAddress = "http://172.20.10.2:8000/predict";
 
-int getPrediction(StaticJsonDocument<200> doc) {
+int getPrediction(JsonDocument doc) {
   WiFiClient client;
   HTTPClient http;
 
@@ -21,7 +21,7 @@ int getPrediction(StaticJsonDocument<200> doc) {
   // Send the POST request with the JSON data
   int httpResponseCode = http.POST(jsonData);
   String response = http.getString();
-  StaticJsonDocument<200> docResponse;
+  JsonDocument docResponse;
   DeserializationError error = deserializeJson(docResponse, response);
 
   if (error) {

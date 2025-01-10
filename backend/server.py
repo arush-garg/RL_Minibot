@@ -13,7 +13,7 @@ model = tf.keras.models.load_model('../model/dqn-model.keras')
 
 if(os.getenv('TRAINING_MODE') == 'true'):
     print("Training mode")
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=optimizer, loss='mse')
     gamma = 0.995
 else:
@@ -69,7 +69,10 @@ def clean_data(data):
 
     current_state = np.expand_dims(data['current_state'], axis=0)
     previous_state = np.expand_dims(data['previous_state'], axis=0)
-
+    
+    if None in current_state or None in previous_state:
+        print('None values in the data')
+    
     current_state[current_state == None] = 0
     previous_state[previous_state == None] = 0
 

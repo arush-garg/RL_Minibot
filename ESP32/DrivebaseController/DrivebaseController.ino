@@ -14,11 +14,10 @@ const char* password = "handGrenade";*/
 const char* ssid = "Techno";
 const char* password = "90023560";
 
-const double SPEED = 0.2; //UPDATE THIS VALUE
+const double SPEED = 0.144; //In meters per second
 
 const double MAX_POS = 2.4; //In meters
-const double MAX_ANG = 0.262; //In radians
-
+const double MAX_ANG = 0.418; //In radians (24 degrees) - Original Gymnasium environment ends at 0.2095, but a greater angle is acceptable for this project
 
 
 // State variables as dictionaries
@@ -26,8 +25,8 @@ unordered_map<string, float> currentState;
 unordered_map<string, float> previousState;
 
 int action = -1;
-float reward = 0.0;
-bool done = false;
+int reward = 0;
+bool done = true; //Start when button is pressed
 
 
 long elapsedTime;
@@ -39,24 +38,24 @@ int leftMotorPin = 13;
 int encoderPinA = 18;
 int encoderPinB = 5; //CHECK AND UPDATE
 
+int buttonPin = 21;
+
 Servo rightMotor;
 Servo leftMotor;
 
 ESP32Encoder encoder;
 
 
-StaticJsonDocument<200> addCurrentState(StaticJsonDocument<200> doc) {
+JsonDocument addCurrentState(JsonDocument doc) {
   JsonArray current_state = doc.createNestedArray("current_state");
   current_state.add(currentState["cartPos"]);
   current_state.add(currentState["cartVel"]);
-  Serial.println(currentState["cartVel"]);
   current_state.add(currentState["poleAng"]);
   current_state.add(currentState["poleVel"]); 
-  Serial.println(currentState["poleVel"]);
   return doc;  
 }
 
-StaticJsonDocument<200> addPreviousState(StaticJsonDocument<200> doc) {
+JsonDocument addPreviousState(JsonDocument doc) {
   JsonArray prev_state = doc.createNestedArray("previous_state");
   prev_state.add(previousState["cartPos"]);
   prev_state.add(previousState["cartVel"]);
@@ -75,15 +74,22 @@ void setup() {
 
   initWiFi();
 
+  pinMode(buttonPin, INPUT_PULLUP);
+
   rightMotor.attach(rightMotorPin);
   leftMotor.attach(leftMotorPin);
 
   ESP32Encoder::useInternalWeakPullResistors = puType::up;
-  encoder.attachHalfQuad(encoderPinA, encoderPinB); //A and B respectively
+  encoder.attachHalfQuad(encoderPinA, encoderPinB);
   encoder.clearCount();
 }
 
 void loop() {
+
+  if(digitalRead(buttonPin) == LOW) {
+    reset();
+  }
+
   while(!done) {
    
     //Get values for 4 variables
@@ -97,12 +103,14 @@ void loop() {
 
       done = isDone();
 
-      StaticJsonDocument<200> doc;   
+      JsonDocument doc;   
       doc = addCurrentState(doc);
       doc = addPreviousState(doc);
       doc["action"] = action;
       doc["reward"] = reward;
       doc["done"] = done;
+
+      printJsonDoc(doc);
 
       if(done) {
         Serial.print("Ended with reward: ");
@@ -114,6 +122,7 @@ void loop() {
       }
       else {
         action = getPrediction(doc);
+        reward++;
       }
     }
 
@@ -122,14 +131,14 @@ void loop() {
       //Serial.println("Forward...");
       rightMotor.writeMicroseconds(1000);
       leftMotor.writeMicroseconds(2000);
-      timeForward += ((millis()-elapsedTime)/1000);
+      timeForward += (((double)(millis()-elapsedTime))/1000);
     }
     //Go backward
-    else {
+    else if (action == 0) {
       //Serial.println("Backward...");
       rightMotor.writeMicroseconds(2000);
       leftMotor.writeMicroseconds(1000);
-      timeForward -= ((millis()-elapsedTime)/1000);
+      timeForward -= (((double)(millis()-elapsedTime))/1000);
     }
 
     updatePreviousState();
@@ -155,12 +164,24 @@ double getCartPos() {
 }
 
 double getCartVel() {
-  Serial.println(millis()-elapsedTime);
-  return 1000*(currentState["cartPos"]-previousState["cartPos"])/(millis()-elapsedTime);
+  double cartVel =  1000*(currentState["cartPos"]-previousState["cartPos"])/(millis()-elapsedTime);
+
+  if(isnan(cartVel)) {
+    return 0.0;
+  }
+  else {
+    return cartVel;
+  }
 }
 
 double getPoleVel() {
-  return 1000*(currentState["poleAng"]-previousState["poleAng"])/(millis()-elapsedTime);
+  double poleVel = 1000*(currentState["poleAng"]-previousState["poleAng"])/(millis()-elapsedTime);
+  if(isnan(poleVel)) {
+    return 0.0;
+  }
+  else {
+    return poleVel;
+  }
 }
 
 void initCurrentState() {
@@ -184,7 +205,7 @@ void updatePreviousState() {
   previousState["poleVel"] = currentState["poleVel"];
 }
 
-boolean isDone() {
+bool isDone() {
   if(currentState["cartPos"] > MAX_POS || currentState["cartPos"] < -MAX_POS || currentState["poleAng"] > MAX_ANG || currentState["poleAng"] < -MAX_ANG) {
     return true;
   }
@@ -193,3 +214,13 @@ boolean isDone() {
   }
 }
 
+void printJsonDoc(JsonDocument doc) {
+  Serial.printf("Pos: %f  Vel: %f PoleAng: %f PoleVel: %f \n", doc["cartPos"], doc["cartVel"], doc["poleAng"], doc["poleVel"]);
+}
+
+void reset() {
+  done = false;
+  encoder.clearCount();
+  timeForward = 0;
+  reward = 0;
+}
