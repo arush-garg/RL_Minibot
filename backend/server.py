@@ -1,21 +1,32 @@
+from collections import deque
 from flask import Flask, jsonify, request
-from dotenv import load_dotenv
-import os
 import numpy as np
 import tensorflow as tf
+import random
 
+
+TRAINING_MODE = True
 
 app = Flask(__name__)
-load_dotenv()
 
 # Load the model
 model = tf.keras.models.load_model('../model/dqn-model.keras')
+target_model = tf.keras.models.load_model('../model/dqn-model.keras')
 
-if(os.getenv('TRAINING_MODE') == 'true'):
+steps = 0
+
+if(TRAINING_MODE):
     print("Training mode")
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-    model.compile(optimizer=optimizer, loss='mse')
+
+    BATCH_SIZE = 16
+    TARGET_UPDATE_INTERVAL = 32
+    EPOCHS = 3
+
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+    model.compile(optimizer=optimizer, loss=tf.keras.losses.Huber())
     gamma = 0.995
+    replay_memory = deque(maxlen=100)
+
 else:
     print("Prediction mode")
     model.trainable = False
@@ -33,7 +44,7 @@ def predict():
 
     current_state, previous_state = clean_data(data)
 
-    if os.getenv("TRAINING_MODE") == 'true' and data['action'] != -1:
+    if TRAINING_MODE and data['action'] != -1:
         train_model(previous_state, current_state, data['action'], data['reward'], data['done'])
 
     action = model.predict(current_state, verbose=0)
@@ -47,19 +58,30 @@ def train_model(previous_state, current_state, action, reward, done):
     Fine-tunes the model using Q-learning principles with previous_state and current_state. The action should be the action taken in the previous state, and the reward is the reward received after taking that action. The done parameter is a boolean indicating whether the episode has ended.
     """
     
-    # Predict Q-values for the previous state
-    q_values = model.predict(previous_state, verbose=0)
+    global steps
+    steps += 1
 
-    next_q_values = model.predict(previous_state, verbose=0)
-    max_next_q_value = np.max(next_q_values)
+    if steps%BATCH_SIZE == 0:
+        batch = random.sample(replay_memory, BATCH_SIZE)
 
-    target_q_values = reward + gamma * max_next_q_value * (1 - done)
+        states, actions, rewards, next_states, dones = map(np.array, zip(*batch))
 
-    q_values = model.predict(previous_state, verbose=0)
-    q_values[0, action] = target_q_values
+        # Compute target Q-values
+        next_q_values = target_model.predict(next_states, verbose=0)
+        max_next_q_values = np.max(next_q_values, axis=1)
+        target_q_values = rewards + gamma * max_next_q_values * (1 - dones)
 
-    model.fit(previous_state, q_values, epochs=1, verbose=0)
-    model.save('../model/dqn-model.keras')
+        q_values = model.predict(states, verbose=0)
+        for i, action in enumerate(actions):
+            q_values[i, action] = target_q_values[i]
+        
+        model.fit(states, q_values, epochs=EPOCHS, verbose=1)
+        model.save("../model/dqn-model.keras")
+    else:
+        replay_memory.append((np.squeeze(previous_state), action, reward, np.squeeze(current_state), done))
+
+    if steps%TARGET_UPDATE_INTERVAL == 0:
+        target_model.set_weights(model.get_weights())
 
 
 def clean_data(data):

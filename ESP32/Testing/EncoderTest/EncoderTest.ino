@@ -1,7 +1,7 @@
 #include <ESP32Encoder.h>
 
-#define pinA 18 // CLK ENCODER
-#define pinB 5 // DT ENCODER
+#define pinA 18 
+#define pinB 5
 
 const int ENCODER_CPR = 1024;
 
@@ -15,6 +15,6 @@ void setup () {
 
 void loop () {
   long newPosition = encoder.getCount();
-  Serial.println((double)(newPosition)/ENCODER_CPR);
+  Serial.println((double)(newPosition*M_PI)/ENCODER_CPR);
   delay(25);
 }

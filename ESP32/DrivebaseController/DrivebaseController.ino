@@ -126,19 +126,17 @@ void loop() {
       }
     }
 
-    //Go forward
-    if(action == 1) {
-      //Serial.println("Forward...");
+    //Go backward
+    if(action == 0) {
       rightMotor.writeMicroseconds(1000);
       leftMotor.writeMicroseconds(2000);
-      timeForward += (((double)(millis()-elapsedTime))/1000);
+      timeForward -= (((double)(millis()-elapsedTime))/1000);
     }
-    //Go backward
-    else if (action == 0) {
-      //Serial.println("Backward...");
+    //Go forward
+    else if (action == 1) {
       rightMotor.writeMicroseconds(2000);
       leftMotor.writeMicroseconds(1000);
-      timeForward -= (((double)(millis()-elapsedTime))/1000);
+      timeForward += (((double)(millis()-elapsedTime))/1000);
     }
 
     updatePreviousState();

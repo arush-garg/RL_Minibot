@@ -5,7 +5,7 @@ In this project, a reinforcement learning model has been deployed onto a drive b
 The model was first trained in the OpenAI Gym `CartPole-v1` environment. Once trained, it was fine-tuned on the drive base.
 
 ![Drivebase picture](media/PrototypeDrivebase.jpg)
-This drivebase was driven by two continuous servos, controlled by an ESP32-WROOM. A Vex encoder has the shaft with the pole (rocket in this case).
+This drivebase was driven by two continuous servos, controlled by an ESP32-WROOM. A Vex encoder has the shaft with the pole. Unfortunately, the servos are not powerful enough to accelerate at a rate that makes a difference to the momentum of the pole. A better, bigger drive base coming soon...
 <br>
 
 ### [Watch]() the drivebase in action.
