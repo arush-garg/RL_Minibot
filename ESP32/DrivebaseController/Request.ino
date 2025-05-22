@@ -3,8 +3,8 @@
 #include <ArduinoJson.h>
 
 
-const char* serverAddress = "http://10.0.0.163:8000/predict";
-//const char* serverAddress = "http://172.20.10.2:8000/predict";
+//const char* serverAddress = "http://10.0.0.163:8000/predict";
+const char* serverAddress = "http://172.20.10.4:8000/predict";
 
 int getPrediction(JsonDocument doc) {
   WiFiClient client;

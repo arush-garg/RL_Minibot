@@ -16,5 +16,5 @@ void setup () {
 void loop () {
   long newPosition = encoder.getCount();
   Serial.println((double)(newPosition*M_PI)/ENCODER_CPR);
-  delay(25);
+  delay(50);
 }

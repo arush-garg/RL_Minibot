@@ -8,23 +8,25 @@
 using namespace std;
 
 
-/*const char* ssid = "iPhone (2)";
-const char* password = "handGrenade";*/
+const char* ssid = "iPhone (2)";
+const char* password = "handGrenade";
 
-const char* ssid = "Techno";
-const char* password = "90023560";
+/*const char* ssid = "Techno";
+const char* password = "90023560";*/
 
-const double SPEED = 0.144; //In meters per second
+const double SPEED = 1.75; //In meters per second
 
 const double MAX_POS = 2.4; //In meters
 const double MAX_ANG = 0.418; //In radians (24 degrees) - Original Gymnasium environment ends at 0.2095, but a greater angle is acceptable for this project
 
+int speedReduction = 300;
 
 // State variables as dictionaries
 unordered_map<string, float> currentState;
 unordered_map<string, float> previousState;
 
 int action = -1;
+int previousAction = -1; // Track previous action
 int reward = 0;
 bool done = true; //Start when button is pressed
 
@@ -32,13 +34,13 @@ bool done = true; //Start when button is pressed
 long elapsedTime;
 double timeForward = 0;
 
-int rightMotorPin = 14;
-int leftMotorPin = 13;
+int rightMotorPin = 15;
+int leftMotorPin = 12;
 
 int encoderPinA = 18;
 int encoderPinB = 5; //CHECK AND UPDATE
 
-int buttonPin = 21;
+int buttonPin = 14;
 
 Servo rightMotor;
 Servo leftMotor;
@@ -128,18 +130,18 @@ void loop() {
 
     //Go backward
     if(action == 0) {
-      rightMotor.writeMicroseconds(1000);
-      leftMotor.writeMicroseconds(2000);
+      moveBackward();
       timeForward -= (((double)(millis()-elapsedTime))/1000);
     }
     //Go forward
     else if (action == 1) {
-      rightMotor.writeMicroseconds(2000);
-      leftMotor.writeMicroseconds(1000);
+      moveForward();
       timeForward += (((double)(millis()-elapsedTime))/1000);
     }
 
     updatePreviousState();
+
+    previousAction = action; // Update previousAction at the end of the loop
   }
 
 } //End of void loop()
@@ -158,7 +160,13 @@ void initWiFi() {
 }
 
 double getCartPos() {
-  return (SPEED * timeForward);
+  // Only update position if action hasn't changed
+  if (action == previousAction) {
+    return (SPEED * timeForward);
+  } else {
+    // Action changed, don't update position
+    return currentState["cartPos"];
+  }
 }
 
 double getCartVel() {
@@ -180,6 +188,18 @@ double getPoleVel() {
   else {
     return poleVel;
   }
+}
+
+void moveForward() {
+  Serial.println("Moving forward");
+  rightMotor.writeMicroseconds(1000+speedReduction);
+  leftMotor.writeMicroseconds(2000-speedReduction);
+}
+
+void moveBackward() {
+  Serial.println("Moving backward");
+  rightMotor.writeMicroseconds(2000-speedReduction);
+  leftMotor.writeMicroseconds(1000+speedReduction);
 }
 
 void initCurrentState() {
@@ -217,8 +237,13 @@ void printJsonDoc(JsonDocument doc) {
 }
 
 void reset() {
+  Serial.println("Resetting...");
+  initCurrentState();
+  initPrevState();
   done = false;
   encoder.clearCount();
   timeForward = 0;
+  elapsedTime = millis();
   reward = 0;
+  previousAction = -1; // Reset previousAction as well
 }
