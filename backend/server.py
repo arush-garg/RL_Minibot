@@ -3,6 +3,7 @@ from flask import Flask, jsonify, request
 import numpy as np
 import tensorflow as tf
 import random
+import threading
 
 
 TRAINING_MODE = True
@@ -18,11 +19,11 @@ steps = 0
 if(TRAINING_MODE):
     print("Training mode")
 
-    BATCH_SIZE = 16
+    BATCH_SIZE = 8
     TARGET_UPDATE_INTERVAL = 32
     EPOCHS = 3
 
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0005)
     model.compile(optimizer=optimizer, loss=tf.keras.losses.Huber())
     gamma = 0.995
     replay_memory = deque(maxlen=100)
@@ -45,7 +46,8 @@ def predict():
     current_state, previous_state = clean_data(data)
 
     if TRAINING_MODE and data['action'] != -1:
-        train_model(previous_state, current_state, data['action'], data['reward'], data['done'])
+        # Run training thread
+        threading.Thread(target=train_model, args=(previous_state, current_state, data['action'], data['reward'], data['done'])).start()
 
     action = model.predict(current_state, verbose=0)
     action = np.argmax(action[0])
@@ -61,7 +63,7 @@ def train_model(previous_state, current_state, action, reward, done):
     global steps
     steps += 1
 
-    if steps%BATCH_SIZE == 0:
+    if len(replay_memory) > BATCH_SIZE and steps%BATCH_SIZE == 0:
         batch = random.sample(replay_memory, BATCH_SIZE)
 
         states, actions, rewards, next_states, dones = map(np.array, zip(*batch))
